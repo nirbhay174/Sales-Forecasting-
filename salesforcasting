@@ -1,0 +1,95 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+from statsmodels.tsa.arima.model import ARIMA
+from sklearn.metrics import mean_squared_error
+from datetime import datetime, timedelta
+
+# Load dataset
+def load_data():
+    # Sample dataset: Replace with your actual sales CSV
+    data = {
+        'date': pd.date_range(start='2021-01-01', periods=36, freq='M'),
+        'sales': np.random.randint(200, 500, size=36)
+    }
+    df = pd.DataFrame(data)
+    df.set_index('date', inplace=True)
+    return df
+
+# Visualize data
+def plot_sales(df):
+    plt.figure(figsize=(10, 5))
+    plt.plot(df.index, df['sales'], marker='o')
+    plt.title("Monthly Sales Data")
+    plt.xlabel("Date")
+    plt.ylabel("Sales")
+    plt.grid()
+    plt.show()
+
+# Forecast using Linear Regression
+def linear_regression_forecast(df, months_ahead=6):
+    df = df.copy()
+    df['time_index'] = np.arange(len(df))
+
+    # Train linear regression
+    model = LinearRegression()
+    model.fit(df[['time_index']], df['sales'])
+
+    # Predict future
+    future_index = np.arange(len(df), len(df) + months_ahead)
+    future_dates = [df.index[-1] + pd.DateOffset(months=i+1) for i in range(months_ahead)]
+    predictions = model.predict(future_index.reshape(-1, 1))
+
+    # Plot
+    plt.figure(figsize=(10, 5))
+    plt.plot(df.index, df['sales'], label='Historical Sales')
+    plt.plot(future_dates, predictions, label='Forecasted Sales', linestyle='--')
+    plt.title("Linear Regression Sales Forecast")
+    plt.xlabel("Date")
+    plt.ylabel("Sales")
+    plt.legend()
+    plt.grid()
+    plt.show()
+
+    return future_dates, predictions
+
+# Forecast using ARIMA
+def arima_forecast(df, months_ahead=6):
+    model = ARIMA(df['sales'], order=(1,1,1))
+    model_fit = model.fit()
+
+    forecast = model_fit.forecast(steps=months_ahead)
+    future_dates = [df.index[-1] + pd.DateOffset(months=i+1) for i in range(months_ahead)]
+
+    plt.figure(figsize=(10, 5))
+    plt.plot(df.index, df['sales'], label='Historical Sales')
+    plt.plot(future_dates, forecast, label='ARIMA Forecast', linestyle='--')
+    plt.title("ARIMA Sales Forecast")
+    plt.xlabel("Date")
+    plt.ylabel("Sales")
+    plt.legend()
+    plt.grid()
+    plt.show()
+
+    return future_dates, forecast
+
+# Main workflow
+if __name__ == "__main__":
+    df = load_data()
+    plot_sales(df)
+    
+    print("Running Linear Regression Forecast...")
+    lr_dates, lr_forecast = linear_regression_forecast(df, months_ahead=6)
+
+    print("Running ARIMA Forecast...")
+    arima_dates, arima_forecast_values = arima_forecast(df, months_ahead=6)
+
+    # Display forecast
+    forecast_df = pd.DataFrame({
+        'Date': lr_dates,
+        'LR Forecast': lr_forecast,
+        'ARIMA Forecast': arima_forecast_values
+    })
+    print("\nForecasted Sales:")
+    print(forecast_df)
